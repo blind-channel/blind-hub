@@ -1,0 +1,61 @@
+[package]
+name = "scuttlebutt"
+version = "0.4.0"
+authors = ["Alex J. Malozemoff <amaloz@galois.com>"]
+license = "MIT"
+readme = "README.md"
+description = "A library of useful multi-party computation utilities"
+keywords = ["cryptography", "MPC", "secure-computation"]
+categories = ["cryptography"]
+edition = "2018"
+publish = false
+
+[lib]
+
+[features]
+nightly = ["rand/nightly"]
+unstable = []
+serde1 = ["serde"]
+
+[dependencies]
+rand = "0.7"
+rand_core = "0.5"
+serde = { version = "1", features = ["derive"], optional = true }
+sha2 = "0.8"
+bincode = "1.3.3"
+
+[dependencies.curv]
+package = "curv-kzen"
+path = "../curv"
+
+[dev-dependencies]
+criterion = "0.2"
+hex = "0.3"
+
+[[bench]]
+name = "aes128"
+harness = false
+
+[[bench]]
+name = "aes256"
+harness = false
+
+[[bench]]
+name = "block"
+harness = false
+
+[[bench]]
+name = "block512"
+harness = false
+
+[[bench]]
+name = "commitment"
+harness = false
+
+[[bench]]
+name = "hash_aes"
+harness = false
+
+[[bench]]
+name = "rand_aes"
+harness = false

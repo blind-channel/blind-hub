@@ -1,0 +1,11 @@
+[workspace]
+
+members = [
+    "curv",
+    "class",
+    "blind-core",
+    "scuttlebutt",
+    "ocelot",
+    "fancy-garbling",
+    "rust-gmp"
+]

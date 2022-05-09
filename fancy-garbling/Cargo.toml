@@ -1,0 +1,57 @@
+[package]
+name = "fancy-garbling"
+version = "0.4.0"
+authors = ["Brent Carmer <bcarmer@galois.com>"]
+license = "MIT"
+readme = "README.md"
+description = "A library for boolean and arithmetic garbling"
+categories = ["cryptography"]
+keywords = ["cryptography", "garbled-circuit", "GC"]
+edition = "2018"
+autobenches = false
+publish = false
+
+[lib]
+doctest = false
+
+[features]
+nightly = ["scuttlebutt/nightly"]
+serde1 = ["serde", "scuttlebutt/serde1"]
+
+[dependencies]
+base_conversion = { path = "base_conversion" }
+scuttlebutt = { path = "../scuttlebutt" }
+ocelot = { path = "../ocelot" }
+itertools = "0.10.0"
+rand = "0.7"
+regex = "1.6"
+serde = { version = "1.0.123", features = ["derive"], optional = true }
+serde_json = "1.0.58"
+
+[dev-dependencies]
+criterion = "0.3.4"
+crossbeam = "0.8.0"
+
+[[bin]]
+name = "gen-deltas"
+required-features = ["serde1"]
+
+[[bench]]
+name = "wire_operations"
+harness = false
+
+[[bench]]
+name = "garbling"
+harness = false
+
+[[bench]]
+name = "circuits"
+harness = false
+
+[[bench]]
+name = "util"
+harness = false
+
+[[bench]]
+name = "semihonest_2pc"
+harness = false

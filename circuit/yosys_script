@@ -1,0 +1,12 @@
+# Circuit Post Processing
+read_verilog ./src/zero-knowledge/zk_split_final.v
+read_verilog ./src/sha256/sha256.v
+read_verilog ./src/sha256/raw_sha256.v
+hierarchy -check -top test_zk_split_final
+proc; flatten; techmap; opt; 
+dfflibmap -liberty ./deps/yosys/asic_cell_yosys_extended.lib
+abc -liberty ./deps/yosys/asic_cell_yosys_extended.lib -script ./deps/yosys/script.abc
+opt -full; clean;
+opt_clean -purge
+tee -a ./output/zk_split_final.pp.stats stat -liberty ./deps/yosys/asic_cell_yosys_extended.lib
+write_verilog -noattr -noexpr ./output/zk_split_final.pp.v
