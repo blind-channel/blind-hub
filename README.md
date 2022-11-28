@@ -6,7 +6,7 @@ To benchmark the blind hub + blind channel, run
 ```bash
 cd blind-core
 tar xJf circuit.tar.xz
-cargo test -p blind-core --release zkgc::tests::test_zk_split_final -- --exact --test-threads=1 --nocapture
+cargo test -p blind-core --release test_channel_hub_reduced -- --exact --test-threads=1 --nocapture
 ```
 
 Note: the original [class group](https://github.com/ZenGo-X/class) doesn't work properly with multithreading test cases. Although we made substitute of class group compose and exp functions, it should be better to use the `--test-threads=1` to prevent other failures.
