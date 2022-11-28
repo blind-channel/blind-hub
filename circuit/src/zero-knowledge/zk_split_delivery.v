@@ -1,4 +1,4 @@
-module test_zk_split(transaction, encoded_output);
+module test_zk_split_delivery(transaction, encoded_output);
     input [3703:0] transaction;
     output [703:0] encoded_output;
 

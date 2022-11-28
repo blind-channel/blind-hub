@@ -81,6 +81,7 @@ impl PureEcdsaReceiver {
         self.signature.write_channel(channel_tumbler)?;
         d_g1.write_channel(channel_tumbler)?;
         proof.write_channel(channel_tumbler)?;
+        channel_tumbler.flush()?;
 
         let mut commitment_rt = [0u8;32];
         channel_tumbler.read_bytes(&mut commitment_rt)?;
@@ -99,6 +100,7 @@ impl PureEcdsaReceiver {
         let rr_knowledge_proof = DlKnowledgeProof::prove(&kr);
         channel_tumbler.write_pt(&rr)?;
         rr_knowledge_proof.write_channel(channel_tumbler)?;
+        channel_tumbler.flush()?;
 
         let c = Ciphertext::read_channel(channel_tumbler)?;
         let rt = channel_tumbler.read_pt()?;
@@ -162,6 +164,7 @@ impl PureEcdsaReceiver {
         rsohc_statement.write_channel(channel_sender)?;
         commitment_amount_randomness.write_channel(channel_sender)?;
         commitment_amount.write_channel(channel_sender)?;
+        channel_sender.flush()?;
 
         println!("Receiver:: promise : {} ms", timer.elapsed().unwrap().as_millis());
 
@@ -260,6 +263,7 @@ impl ChannelReceiver {
         self.signature.write_channel(channel_tumbler)?;
         d_g1.write_channel(channel_tumbler)?;
         proof.write_channel(channel_tumbler)?;
+        channel_tumbler.flush()?;
 
         let statement = PuzzleStatement::read_channel(channel_tumbler)?;
         let mut rsohc_statement_r1 = G1Point::read_channel(channel_tumbler)?;
@@ -301,6 +305,7 @@ impl ChannelReceiver {
         rsohc_statement.write_channel(channel_sender)?;
         commitment_amount_randomness.write_channel(channel_sender)?;
         commitment_amount.write_channel(channel_sender)?;
+        channel_sender.flush()?;
 
         println!("Receiver:: promise : {} ms", timer.elapsed().unwrap().as_millis());
 

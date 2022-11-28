@@ -240,7 +240,7 @@ pub enum ChannelStatus {
 
 #[derive(Clone)]
 pub struct ChannelParams {
-    pub(crate) funding_transaction: Transaction,
+    pub funding_transaction: Transaction,
     funding_script: Script,
     commitment_output_amount: u64,
     commitment_timelock_relative_split: u32,

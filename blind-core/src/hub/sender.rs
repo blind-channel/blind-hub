@@ -38,6 +38,7 @@ impl PureEcdsaSender {
         statement.write_channel(channel_tumbler)?;
         commitment_token.write_channel(channel_tumbler)?;
         commitment_amount.write_channel(channel_tumbler)?;
+        channel_tumbler.flush()?;
 
         let mut signature = rsohc::Signature::read_channel(channel_tumbler)?;
 
@@ -59,6 +60,7 @@ impl PureEcdsaSender {
         commitment_token.write_channel(channel_receiver)?;
         commitment_amount.write_channel(channel_receiver)?;
         signature.write_channel(channel_receiver)?;
+        channel_receiver.flush()?;
 
         println!("Sender  :: register: {} ms", timer.elapsed().unwrap().as_millis());
 
@@ -124,7 +126,8 @@ impl PureEcdsaSender {
         statement_ciphertext.write_channel(channel_tumbler)?;
         rsohc_statement_r1.write_channel(channel_tumbler)?;
         rsohc_statement.write_channel(channel_tumbler)?;
-        
+        channel_tumbler.flush()?;
+
         let rt = channel_tumbler.read_pt()?;
         let commitment_rt_randomness = channel_tumbler.read_scalar()?;
         let rc = channel_tumbler.read_pt()?;
@@ -154,6 +157,7 @@ impl PureEcdsaSender {
         }
         let sig_s_ks_invert = sig_s.mul(&ks.invert().unwrap());
         channel_tumbler.write_scalar(&sig_s_ks_invert)?;
+        channel_tumbler.flush()?;
 
         let sig_s = channel_tumbler.read_scalar()?;
         let y_secp256k1 = &sig_s_ks_invert.mul(&sig_s.invert().unwrap());
@@ -164,6 +168,7 @@ impl PureEcdsaSender {
         channel_receiver.write_scalar(
             &y_secp256k1.sub(&Secp256k1Scalar::from_bigint(&rsohc_statement_rand.to_bigint()))
         )?;
+        channel_receiver.flush()?;
 
         println!("Sender  :: solve   : {} ms", timer.elapsed().unwrap().as_millis());
 
@@ -198,6 +203,7 @@ impl ChannelSender {
         statement.write_channel(channel_tumbler)?;
         commitment_token.write_channel(channel_tumbler)?;
         commitment_amount.write_channel(channel_tumbler)?;
+        channel_tumbler.flush()?;
 
         let mut signature = rsohc::Signature::read_channel(channel_tumbler)?;
 
@@ -221,6 +227,7 @@ impl ChannelSender {
         commitment_token.write_channel(channel_receiver)?;
         commitment_amount.write_channel(channel_receiver)?;
         signature.write_channel(channel_receiver)?;
+        channel_receiver.flush()?;
 
         println!("Sender  :: register: {} ms", timer.elapsed().unwrap().as_millis());
 
@@ -279,6 +286,7 @@ impl ChannelSender {
         statement_ciphertext.write_channel(channel_tumbler)?;
         rsohc_statement_r1.write_channel(channel_tumbler)?;
         rsohc_statement.write_channel(channel_tumbler)?;
+        channel_tumbler.flush()?;
 
         println!("Sender  :: solve1  : {} ms", timer.elapsed().unwrap().as_millis());
 
@@ -302,6 +310,7 @@ impl ChannelSender {
         channel_receiver.write_scalar(
             &y_secp256k1.sub(&Secp256k1Scalar::from_bigint(&rsohc_statement_rand.to_bigint()))
         )?;
+        channel_receiver.flush()?;
 
         println!("Sender  :: solve2  : {} ms", timer.elapsed().unwrap().as_millis());
 

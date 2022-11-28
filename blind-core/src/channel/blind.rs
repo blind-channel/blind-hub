@@ -35,6 +35,7 @@ impl ChannelBlind {
         funding_output_amount: u64
     ) -> anyhow::Result<Transaction> {
         funding_template_blnd.write_channel(chan)?;
+        chan.flush()?;
         let funding_template_user = Transaction::read_channel(chan)?;
         Ok(new_unsigned_transcation_funding(
             funding_template_user,
@@ -56,6 +57,7 @@ impl ChannelBlind {
         let rev_cred_blnd = Secp256k1Scalar::random().underlying_ref().clone().unwrap().0.clone();
         let rev_hash_blnd: [u8;32] = Sha256::digest(&Sha256::digest(&rev_cred_blnd.as_ref())).try_into()?;
         chan.write_bytes(&rev_hash_blnd)?;
+        chan.flush()?;
         let mut rev_hash_user = [0u8;32];
         chan.read_bytes(&mut rev_hash_user)?;
 
@@ -100,6 +102,7 @@ impl ChannelBlind {
         let sk_blnd = ChannelSK::new();
         let pk_blnd = ChannelPK::from_sk(&sk_blnd);
         pk_blnd.write_channel(chan)?;
+        chan.flush()?;
         let pk_user = ChannelPK::read_channel(chan)?;
 
         let funding_script = new_funding_script(
@@ -150,6 +153,7 @@ impl ChannelBlind {
             &commitment_script
         )?;
         split_sig_blnd.write_channel(chan)?;
+        chan.flush()?;
         let split_sig_user = Signature::read_channel(chan)?;
         split_sig_user.verify(&Message::from_slice(split_sighash.as_inner())?, &pk_user.pk_sig.inner)?;
         let split_transaction = compose_transaction_split(
@@ -172,6 +176,7 @@ impl ChannelBlind {
             &sk_blnd.sk_sig
         );
         commitment_presig_blnd.write_channel(chan)?;
+        chan.flush()?;
         let commitment_presig_user = AdaptorSignature::read_channel(chan)?;
         commitment_presig_user.pre_verify(
             &pk_blnd.pk_pub,
@@ -200,6 +205,7 @@ impl ChannelBlind {
 
         let funding_part_blnd = funding_signer.sign_transaction(funding_transaction_unsigned)?;
         funding_part_blnd.write_channel(chan)?;
+        chan.flush()?;
         let funding_part_user = Transaction::read_channel(chan)?;
         let funding_transaction = compose_transaction_funding(funding_part_user, funding_part_blnd)?;
 
@@ -317,6 +323,7 @@ impl ChannelBlind {
                     Message::from_slice(&sighash_list.sighash_tmout)?
                 );
                 timtout_transaction_sig_blnd.write_channel(f.get_channel())?;
+                f.get_channel().flush()?;
                 // let timtout_transaction_sig_user = Signature::read_channel(f.get_channel())?;
                 (Some(aed_transaction_presig_user), None)
             },
@@ -330,6 +337,7 @@ impl ChannelBlind {
                 let timtout_transaction_sig_blnd = self.sk_blnd.sk_sig.sign_ecdsa(
                     Message::from_slice(&sighash_list.sighash_tmout)?
                 );
+                f.get_channel().flush()?;
                 // timtout_transaction_sig_blnd.write_channel(f.get_channel())?;
                 let timtout_transaction_sig_user = Signature::read_channel(f.get_channel())?;
                 let timeout_transaction = compose_transaction_multisig(
@@ -366,6 +374,7 @@ impl ChannelBlind {
             &self.sk_blnd.sk_sig
         );
         commitment_transaction_presig_blnd.write_channel(f.get_channel())?;
+        f.get_channel().flush()?;
         let commitment_transaction_presig_user = AdaptorSignature::read_channel(f.get_channel())?;
         commitment_transaction_presig_user.pre_verify(
             &self.pk_blnd.pk_pub,
@@ -388,6 +397,7 @@ impl ChannelBlind {
                 bitcoin::EcdsaSighashType::All
             )?.as_inner()
         )?);
+
         let commitment_transaction = compose_transaction_multisig(
             commitment_transaction,
             commitment_transaction_sig_user,
@@ -397,6 +407,7 @@ impl ChannelBlind {
         commitment_transaction.verify(|_| Some(self.params.funding_transaction.output[0].clone()))?;
 
         previous_rev_cred_this.write_channel(f.get_channel())?;
+        f.get_channel().flush()?;
         let previous_rev_cred_other = SecretKey::read_channel(f.get_channel())?;
         let previous_rev_hash_other_comp: [u8;32] =  Sha256::digest(&Sha256::digest(previous_rev_cred_other.as_ref())).try_into()?;
         if previous_rev_hash_other != previous_rev_hash_other_comp {
@@ -514,6 +525,7 @@ impl ChannelBlind {
             &self.sk_blnd.sk_sig
         );
         commitment_transaction_presig_blnd.write_channel(f.get_channel())?;
+        f.get_channel().flush()?;
         let commitment_transaction_presig_user = AdaptorSignature::read_channel(f.get_channel())?;
         commitment_transaction_presig_user.pre_verify(
             &self.pk_blnd.pk_pub,
@@ -545,6 +557,7 @@ impl ChannelBlind {
         commitment_transaction.verify(|_| Some(self.params.funding_transaction.output[0].clone()))?;
 
         previous_rev_cred_this.write_channel(f.get_channel())?;
+        f.get_channel().flush()?;
         let previous_rev_cred_other = SecretKey::read_channel(f.get_channel())?;
         let previous_rev_hash_other_comp: [u8;32] =  Sha256::digest(&Sha256::digest(previous_rev_cred_other.as_ref())).try_into()?;
         if previous_rev_hash_other != previous_rev_hash_other_comp {

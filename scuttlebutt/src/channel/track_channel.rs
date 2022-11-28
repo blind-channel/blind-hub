@@ -70,7 +70,6 @@ impl<R: Read, W: Write> AbstractChannel for TrackChannel<R, W> {
     fn write_bytes(&mut self, bytes: &[u8]) -> Result<()> {
         self.nbits_writer.lock().unwrap().add_assign(bytes.len() * 8);
         self.writer.lock().unwrap().write_all(bytes).unwrap();
-        self.flush().unwrap();
         Ok(())
     }
 

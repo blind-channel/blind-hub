@@ -1,5 +1,5 @@
 module test_zk_split_final(transaction, split_transaction_hash);
-    input [3360:0] transaction;
+    input [3359:0] transaction;
     output [255:0] split_transaction_hash;
 
     sighash_split zk_unit(

@@ -8,7 +8,7 @@ OUTPUT_DIR = ./output
 
 .PHONY: build build-outdir build-sha256 build-aes256 build-zk-split-final build-zk-split-delivery build-zk-aed-txout build-zk-all clean
 
-build: build-sha256 build-aes256 build-zk-split-final build-zk-split-delivery build-zk-aed-txout build-zk-all
+build: build-sha256 build-aes256 build-zk-split-final build-zk-split-delivery build-zk-aed-txout build-zk-all build-zk-sat-all
 
 build-outdir:
 	mkdir -p $(OUTPUT_DIR)
@@ -150,6 +150,28 @@ $(OUTPUT_DIR)/zk_all.pp.bristol: build-outdir $(AES256_DIR)/raw_aes256.v $(AES25
 	echo "write_verilog -noattr -noexpr $(OUTPUT_DIR)/zk_all.pp.v" >> yosys_script ;
 	time yosys -s yosys_script ;
 	python3 $(V2B) -v $(OUTPUT_DIR)/zk_all.pp.v $(OUTPUT_DIR)/zk_all.pp.bristol ;
+	rm -f yosys_script
+
+build-zk-sat-all: $(OUTPUT_DIR)/zk_sat_all.pp.bristol
+
+$(OUTPUT_DIR)/zk_sat_all.pp.bristol: build-outdir $(AES256_DIR)/raw_aes256.v $(AES256_DIR)/aes256.v $(ZKCIRC_DIR)/zk_split_delivery.v $(ZKCIRC_DIR)/zk_aed_timeout.v $(ZKCIRC_DIR)/zk_all.v ./src/util.v
+	echo "# Circuit Post Processing" > yosys_script ;
+	echo "read_verilog $(ZKCIRC_DIR)/zk_all.v" >> yosys_script ;
+	echo "read_verilog $(ZKCIRC_DIR)/zk_aed_timeout.v" >> yosys_script ;
+	echo "read_verilog $(ZKCIRC_DIR)/zk_split_delivery.v" >> yosys_script ;
+	echo "read_verilog ./src/util.v" >> yosys_script ;
+	echo "read_verilog $(SHA256_DIR)/sha256.v" >> yosys_script ;
+	echo "read_verilog $(SHA256_DIR)/raw_sha256.v" >> yosys_script ;
+	echo "hierarchy -check -top zk_sat_all" >> yosys_script ;
+	echo "proc; flatten; techmap; opt; " >> yosys_script;
+	echo "dfflibmap -liberty $(YOSYS_LIB)" >> yosys_script ;
+	echo "abc -liberty $(YOSYS_LIB) -script $(YOSYS_SCRIPT)" >> yosys_script ;
+	echo "opt -full; clean;" >> yosys_script ;
+	echo "opt_clean -purge" >> yosys_script ;
+	echo "tee -a $(OUTPUT_DIR)/zk_sat_all.pp.stats stat -liberty $(YOSYS_LIB)" >> yosys_script ;
+	echo "write_verilog -noattr -noexpr $(OUTPUT_DIR)/zk_sat_all.pp.v" >> yosys_script ;
+	time yosys -s yosys_script ;
+	python3 $(V2B) -v $(OUTPUT_DIR)/zk_sat_all.pp.v $(OUTPUT_DIR)/zk_sat_all.pp.bristol ;
 	rm -f yosys_script
 
 clean:

@@ -1,3 +1,26 @@
+module zk_sat_all(encoded_sighash_transaction, satisfiable);
+    input [6887:0] encoded_sighash_transaction;
+    output satisfiable;
+    wire [255:0] sighash_split_comp;
+    wire [255:0] sighash_txaed_comp;
+    wire [255:0] sighash_tmout_comp;
+    wire [6119:0] encoded_transaction;
+    wire [255:0] sighash_split;
+    wire [255:0] sighash_txaed;
+    wire [255:0] sighash_tmout;
+
+    assign {encoded_transaction, sighash_split_comp, sighash_txaed_comp, sighash_tmout_comp} = encoded_sighash_transaction;
+
+    zk_all zk_all_unit(
+        .encoded_transaction(encoded_transaction),
+        .sighash_all({sighash_split, sighash_txaed, sighash_tmout})
+    );
+    
+    assign satisfiable = (sighash_split_comp == sighash_split && sighash_txaed_comp == sighash_txaed && sighash_tmout_comp == sighash_tmout)
+        ? 1
+        : 0;
+endmodule
+
 module zk_all(encoded_transaction, sighash_all);
     input [6119:0] encoded_transaction;
     output [767:0] sighash_all;

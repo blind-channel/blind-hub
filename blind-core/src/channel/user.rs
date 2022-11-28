@@ -35,6 +35,7 @@ impl ChannelUser {
         funding_output_amount: u64
     ) -> anyhow::Result<Transaction> {
         funding_template_user.write_channel(chan)?;
+        chan.flush()?;
         let funding_template_blnd = Transaction::read_channel(chan)?;
         Ok(new_unsigned_transcation_funding(
             funding_template_user,
@@ -56,6 +57,7 @@ impl ChannelUser {
         let rev_cred_user = Secp256k1Scalar::random().underlying_ref().clone().unwrap().0.clone();
         let rev_hash_user: [u8;32] = Sha256::digest(&Sha256::digest(&rev_cred_user.as_ref())).try_into()?;
         chan.write_bytes(&rev_hash_user)?;
+        chan.flush()?;
         let mut rev_hash_blnd = [0u8;32];
         chan.read_bytes(&mut rev_hash_blnd)?;
 
@@ -100,6 +102,7 @@ impl ChannelUser {
         let sk_user = ChannelSK::new();
         let pk_user = ChannelPK::from_sk(&sk_user);
         pk_user.write_channel(chan)?;
+        chan.flush()?;
         let pk_blnd = ChannelPK::read_channel(chan)?;
 
         let funding_script = new_funding_script(
@@ -150,6 +153,7 @@ impl ChannelUser {
             &commitment_script
         )?;
         split_sig_user.write_channel(chan)?;
+        chan.flush()?;
         let split_sig_blnd = Signature::read_channel(chan)?;
         split_sig_blnd.verify(&Message::from_slice(split_sighash.as_inner())?, &pk_blnd.pk_sig.inner)?;
         let split_transaction = compose_transaction_split(
@@ -172,6 +176,7 @@ impl ChannelUser {
             &sk_user.sk_sig
         );
         commitment_presig_user.write_channel(chan)?;
+        chan.flush()?;
         let commitment_presig_blnd = AdaptorSignature::read_channel(chan)?;
         commitment_presig_blnd.pre_verify(
             &pk_user.pk_pub,
@@ -201,6 +206,7 @@ impl ChannelUser {
 
         let funding_part_user = funding_signer.sign_transaction(funding_transaction_unsigned)?;
         funding_part_user.write_channel(chan)?;
+        chan.flush()?;
         let funding_part_blnd = Transaction::read_channel(chan)?;
         let funding_transaction = compose_transaction_funding(funding_part_user, funding_part_blnd)?;
 
@@ -224,6 +230,7 @@ impl ChannelUser {
         let commitment_amount_blnd_randomness = FieldScalar::random();
         G1Point::base_point2().scalar_mul(&commitment_amount_user_randomness).write_channel(chan)?;
         G1Point::base_point2().scalar_mul(&commitment_amount_blnd_randomness).write_channel(chan)?;
+        chan.flush()?;
         // dbg!(crate::rsohc::commit_with_randomness(&FieldScalar::from_bigint(&split_return_amount.into()), &commitment_amount_user_randomness));
         // dbg!(crate::rsohc::commit_with_randomness(&FieldScalar::from_bigint(&split_return_amount.into()), &commitment_amount_blnd_randomness));
         
@@ -318,6 +325,7 @@ impl ChannelUser {
                     &Secp256k1Scalar::from_underlying(Some(secp256_k1::SK(self.sk_user.sk_sig)))
                 );
                 aed_transaction_presig_user.write_channel(f.get_channel())?;
+                f.get_channel().flush()?;
                 let timtout_transaction_sig_user = self.sk_user.sk_sig.sign_ecdsa(
                     Message::from_slice(&timeout_transaction_sighash)?
                 );
@@ -345,6 +353,7 @@ impl ChannelUser {
                     Message::from_slice(&timeout_transaction_sighash)?
                 );
                 timtout_transaction_sig_user.write_channel(f.get_channel())?;
+                f.get_channel().flush()?;
                 // let timtout_transaction_sig_blnd = Signature::read_channel(f.get_channel())?;
                 (Some(aed_transaction_presig_blnd), None)
             }
@@ -429,6 +438,7 @@ impl ChannelUser {
             &self.sk_user.sk_sig
         );
         commitment_transaction_presig_user.write_channel(f.get_channel())?;
+        f.get_channel().flush()?;
         let commitment_transaction_presig_blnd = AdaptorSignature::read_channel(f.get_channel())?;
         commitment_transaction_presig_blnd.pre_verify(
             &self.pk_user.pk_pub,
@@ -460,6 +470,7 @@ impl ChannelUser {
         commitment_transaction.verify(|_| Some(self.params.funding_transaction.output[0].clone()))?;
 
         previous_rev_cred_this.write_channel(f.get_channel())?;
+        f.get_channel().flush()?;
         let previous_rev_cred_other = SecretKey::read_channel(f.get_channel())?;
         let previous_rev_hash_other_comp: [u8;32] =  Sha256::digest(&Sha256::digest(previous_rev_cred_other.as_ref())).try_into()?;
         if previous_rev_hash_other != previous_rev_hash_other_comp {
@@ -595,6 +606,7 @@ impl ChannelUser {
             &self.sk_user.sk_sig
         );
         commitment_transaction_presig_user.write_channel(f.get_channel())?;
+        f.get_channel().flush()?;
         let commitment_transaction_presig_blnd = AdaptorSignature::read_channel(f.get_channel())?;
         commitment_transaction_presig_blnd.pre_verify(
             &self.pk_user.pk_pub,
@@ -628,6 +640,7 @@ impl ChannelUser {
         split_transaction.verify(|_| Some(commitment_transaction.output[0].clone()))?;
 
         previous_rev_cred_this.write_channel(f.get_channel())?;
+        f.get_channel().flush()?;
         let previous_rev_cred_other = SecretKey::read_channel(f.get_channel())?;
         let previous_rev_hash_other_comp: [u8;32] =  Sha256::digest(&Sha256::digest(previous_rev_cred_other.as_ref())).try_into()?;
         if previous_rev_hash_other != previous_rev_hash_other_comp {

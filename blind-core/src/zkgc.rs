@@ -91,7 +91,9 @@ pub fn prove_all_transactions<C: AbstractChannel>(
         &ev_inputs_binary,
         &[2u16;6120]
     )?;
-    let label_wire = circ.eval_label(f, &[], &ev_inputs)?;
+    f.get_channel().flush()?;
+    let label_wire = circ.eval_label(f, &vec![], &ev_inputs)?;
+    f.get_channel().flush()?;
 
     let encoded_amount = [
         split_transaction.output[0].value.to_le_bytes(),
@@ -122,6 +124,7 @@ pub fn prove_all_transactions<C: AbstractChannel>(
     let com_trans_temp_rand = write_amount_commitment(f.get_channel(), 128, &zs, &scalar2)?;
     let com_puser_temp_rand = write_amount_commitment(f.get_channel(), 064, &zs, &scalar2)?;
     let com_pblnd_temp_rand = write_amount_commitment(f.get_channel(), 000, &zs, &scalar2)?;
+    f.get_channel().flush()?;
     // let com_trans_temp = f.get_channel().read_pt()?;
     // let com_puser_temp = f.get_channel().read_pt()?;
     // let com_pblnd_temp = f.get_channel().read_pt()?;
@@ -177,6 +180,7 @@ pub fn prove_all_transactions<C: AbstractChannel>(
             _ => Err(anyhow::anyhow!("Invalid modulo"))
         }
     }).collect::<anyhow::Result::<()>>()?;
+    f.get_channel().flush()?;
     Ok(())
 }
 
@@ -200,7 +204,9 @@ pub fn prove_split_final_transaction<C: AbstractChannel>(
         &ev_inputs_binary,
         &[2u16;3360]
     )?;
-    let label_wire = circ.eval_label(f, &[], &ev_inputs)?;
+    f.get_channel().flush()?;
+    let label_wire = circ.eval_label(f, &vec![], &ev_inputs)?;
+    f.get_channel().flush()?;
 
     let encoded_amount = [
         split_transaction.output[0].value.to_le_bytes(),
@@ -228,6 +234,7 @@ pub fn prove_split_final_transaction<C: AbstractChannel>(
     let scalar2 = FieldScalar::from_bigint(&BigInt::from(2));
     let com_puser_temp_rand = write_amount_commitment(f.get_channel(), 064, &zs, &scalar2)?;
     let com_pblnd_temp_rand = write_amount_commitment(f.get_channel(), 000, &zs, &scalar2)?;
+    f.get_channel().flush()?;
     let delta_inv = FieldScalar::read_channel(f.get_channel())?.invert().unwrap();
     let com_puser_temp_rand = com_puser_temp_rand.mul(&delta_inv);
     let com_pblnd_temp_rand = com_pblnd_temp_rand.mul(&delta_inv);
@@ -273,6 +280,8 @@ pub fn prove_split_final_transaction<C: AbstractChannel>(
         }
     }).collect::<anyhow::Result::<()>>()?;
 
+    f.get_channel().flush()?;
+
     // f.get_channel().write_bytes(bitcoin::util::sighash::SighashCache::new(split_transaction).segwit_signature_hash(
     //     0,
     //     &commitment_script,
@@ -314,7 +323,9 @@ pub fn verify_all_transactions<C: AbstractChannel>(
     // println!("Verifier side: {}", public_input_bytes_comp.to_hex());
 
     let ev_inputs = f.receive_many(&[2u16;6120])?;
-    let label_wire = circ.eval_label(f, &[], &ev_inputs)?;
+    f.get_channel().flush()?;
+    let label_wire = circ.eval_label(f, &vec![], &ev_inputs)?;
+    f.get_channel().flush()?;
 
     let mut zs = Vec::with_capacity(192);
     let delta = FieldScalar::random();
@@ -340,11 +351,13 @@ pub fn verify_all_transactions<C: AbstractChannel>(
         // f.get_channel().write_scalar(&c1)?;
         // f.get_channel().flush()?;
     }
+    f.get_channel().flush()?;
     let scalar2 = FieldScalar::from_bigint(&BigInt::from(2));
     let com_trans_temp = manipulate_amount_commitment(f.get_channel(),128, &zs, &scalar2, &delta)?;
     let com_puser_temp = manipulate_amount_commitment(f.get_channel(),064, &zs, &scalar2, &delta)?;
     let com_pblnd_temp = manipulate_amount_commitment(f.get_channel(),000, &zs, &scalar2, &delta)?;
     delta.write_channel(f.get_channel())?;
+    f.get_channel().flush()?;
     let mut proof_trans_bytes = [0u8; 192];
     f.get_channel().read_bytes(&mut proof_trans_bytes)?;
     CommitmentEqualityProof::deserialize(&proof_trans_bytes)?.verify(&com_trans_temp, commitment_transfer_amount)?;
@@ -434,7 +447,9 @@ pub fn verify_split_final_transaction<C: AbstractChannel>(
     ).unwrap()[000..404].to_vec();
 
     let ev_inputs = f.receive_many(&[2u16;3360])?;
-    let label_wire = circ.eval_label(f, &[], &ev_inputs)?;
+    f.get_channel().flush()?;
+    let label_wire = circ.eval_label(f, &vec![], &ev_inputs)?;
+    f.get_channel().flush()?;
 
     let mut zs = Vec::with_capacity(128);
     let delta = FieldScalar::random();
@@ -460,10 +475,12 @@ pub fn verify_split_final_transaction<C: AbstractChannel>(
         // f.get_channel().write_scalar(&c1)?;
         // f.get_channel().flush()?;
     }
+    f.get_channel().flush()?;
     let scalar2 = FieldScalar::from_bigint(&BigInt::from(2));
     let com_puser_temp = manipulate_amount_commitment(f.get_channel(),064, &zs, &scalar2, &delta)?;
     let com_pblnd_temp = manipulate_amount_commitment(f.get_channel(),000, &zs, &scalar2, &delta)?;
     delta.write_channel(f.get_channel())?;
+    f.get_channel().flush()?;
     let mut proof_trans_bytes = [0u8; 192];
     f.get_channel().read_bytes(&mut proof_trans_bytes)?;
     CommitmentEqualityProof::deserialize(&proof_trans_bytes)?.verify(&com_puser_temp, commitment_payback_amount_user)?;
@@ -724,6 +741,7 @@ mod tests{
             EcdsaSighashType::All
         ).unwrap();
 
+        let total = SystemTime::now();
         let circ_ = circ.clone();
         let commitment_script_ = commitment_script.clone();
         let (tx, rx) = track_unix_channel_pair();
@@ -778,6 +796,11 @@ mod tests{
         assert_eq!(split_sighash[..], split_sighash_comp[..]);
 
         handle.join().unwrap();
+
+        println!(
+            "Total: {} ms",
+            total.elapsed().unwrap().as_millis()
+        );
     }
 
     #[test]

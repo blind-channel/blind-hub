@@ -381,6 +381,214 @@ fn test_all() {
     assert_eq!(decode_boolean(&result, true).unwrap(), rslt);
 }
 
+#[test]
+fn test_all_sat() {
+    let dummy_txid: Txid = Txid::from_str("2df0ce8b422af8aa1a0ea5cf3f2db50d33a9355281897d1193fedbbda6e41c07").unwrap();
+    let dummy_addr_user: Address = Address::from_str("bcrt1qxzgp4utr352vp7rq79k97q6nuf6c3emyrumz68").unwrap();
+    let dummy_addr_blnd: Address = Address::from_str("bcrt1qun5x7r2ft88gdxltjfjl3m3n6537ps8sypfttm").unwrap();
+
+    let secp = Secp256k1::default();
+    let sk_user = Secp256k1Scalar::random().underlying_ref().clone().unwrap().0.clone();
+    let sk_blnd = Secp256k1Scalar::random().underlying_ref().clone().unwrap().0.clone();
+    let pk_sig_user = PublicKey::from_private_key(&secp, &PrivateKey::new(sk_user.clone(), bitcoin::Network::Regtest));
+    let pk_sig_blnd = PublicKey::from_private_key(&secp, &PrivateKey::new(sk_blnd.clone(), bitcoin::Network::Regtest));
+
+    let commitment_amount = 60_0000_0000_u64;
+    let transfer_amount = 20_0000_0000_u64;
+    let payback_amount_user = 19_9980_0000_u64;
+    let payback_amount_blnd = 19_9980_0000_u64;
+    let fee = 10_0000;
+    
+    let secp = Secp256k1::default();
+    let rev_cred_user = PrivateKey::new(
+        Secp256k1Scalar::random().underlying_ref().clone().unwrap().0,
+        bitcoin::Network::Regtest
+    );
+    let rev_cred_blnd = PrivateKey::new(
+        Secp256k1Scalar::random().underlying_ref().clone().unwrap().0,
+        bitcoin::Network::Regtest
+    );
+    let sk_pub_user = PrivateKey::new(
+        Secp256k1Scalar::random().underlying_ref().clone().unwrap().0,
+        bitcoin::Network::Regtest
+    );
+    let sk_pub_blnd = PrivateKey::new(
+        Secp256k1Scalar::random().underlying_ref().clone().unwrap().0,
+        bitcoin::Network::Regtest
+    );
+
+    let commitment_script = new_commitment_script(
+        2,
+        4,
+        &pk_sig_user,
+        &pk_sig_blnd,
+        &sha2::Sha256::digest(&sha2::Sha256::digest(&rev_cred_user.to_bytes())).try_into().unwrap(),
+        &sha2::Sha256::digest(&sha2::Sha256::digest(&rev_cred_blnd.to_bytes())).try_into().unwrap(),
+        &sk_pub_user.public_key(&secp),
+        &sk_pub_blnd.public_key(&secp)
+    );
+
+    let split_script = new_split_delivery_script(&pk_sig_user, &pk_sig_blnd);
+
+    let split_transaction = new_unsigned_transaction_split_delivery(
+        &dummy_txid,
+        0,
+        transfer_amount,
+        payback_amount_user,
+        payback_amount_blnd,
+        &split_script,
+        &dummy_addr_user,
+        &dummy_addr_blnd,
+        2
+    );
+
+    let aed_transaction = new_unsigned_transaction_aed(
+        &split_transaction.txid(),
+        0,
+        transfer_amount-fee,
+        &dummy_addr_blnd
+    );
+
+    let timeout_transaction = new_unsigned_transaction_timeout(
+        &split_transaction.txid(),
+        0,
+        transfer_amount-fee,
+        &dummy_addr_blnd,
+        5
+    );
+
+    let encoded_all = encode_mpc_all(
+        &split_transaction,
+        &aed_transaction,
+        &timeout_transaction,
+        &commitment_script,
+        &split_script,
+        commitment_amount,
+        fee
+    ).unwrap();
+
+    let split_sighash = Sha256::digest(&Sha256::digest(&
+        [
+            &encoded_all[000..350],
+            Sha256::digest(&Sha256::digest(&[
+                &encoded_all[741..749],
+                &encoded_all[606..641],
+                &encoded_all[749..757],
+                &encoded_all[641..664],
+                &encoded_all[757..765],
+                &encoded_all[664..687]
+            ].concat())).as_slice(),
+            &encoded_all[350..358]
+        ].concat()
+    ));
+
+    let split_sighash_comp = SighashCache::new(&split_transaction).segwit_signature_hash(
+        0,
+        &commitment_script,
+        60_0000_0000,
+        EcdsaSighashType::All
+    ).unwrap();
+
+    assert_eq!(&split_sighash.as_slice(), &split_sighash_comp.to_vec());
+
+    let aed_sighash = Sha256::digest(&Sha256::digest(&
+        [
+            &encoded_all[358..362],
+            &Sha256::digest(&Sha256::digest([
+                split_transaction.txid().as_ref(),
+                &encoded_all[394..398]
+            ].concat())),
+            &encoded_all[362..394],
+            split_transaction.txid().as_ref(),
+            &encoded_all[394..470],
+            &encoded_all[741..749],
+            &encoded_all[470..474],
+            &Sha256::digest(&Sha256::digest([
+                &19_9990_0000_u64.to_le_bytes(),
+                &encoded_all[687..710]
+            ].concat())),
+            &encoded_all[474..482]
+        ].concat()
+    ));
+
+    let aed_sighash_comp = SighashCache::new(&aed_transaction).segwit_signature_hash(
+        0,
+        &split_script,
+        20_0000_0000,
+        EcdsaSighashType::All
+    ).unwrap();
+
+    assert_eq!(&aed_sighash.as_slice(), &aed_sighash_comp.to_vec());
+
+    let timeout_sighash = Sha256::digest(&Sha256::digest(&
+        [
+            &encoded_all[482..486],
+            &Sha256::digest(&Sha256::digest([
+                split_transaction.txid().as_ref(),
+                &encoded_all[518..522]
+            ].concat())),
+            &encoded_all[486..518],
+            split_transaction.txid().as_ref(),
+            &encoded_all[518..594],
+            &encoded_all[741..749],
+            &encoded_all[594..598],
+            &Sha256::digest(&Sha256::digest([
+                &19_9990_0000_u64.to_le_bytes(),
+                &encoded_all[710..733]
+            ].concat())),
+            &encoded_all[598..606]
+        ].concat()
+    ));
+
+    let timeout_sighash_comp = SighashCache::new(&timeout_transaction).segwit_signature_hash(
+        0,
+        &split_script,
+        20_0000_0000,
+        EcdsaSighashType::All
+    ).unwrap();
+
+    assert_eq!(&timeout_sighash.as_slice(), &timeout_sighash_comp.to_vec());
+    
+    let reader = BufReader::new(std::fs::File::open(
+        "circuit/zk_sat_all.circ"
+    ).unwrap());
+    let mut circ: Circuit = bincode::deserialize_from(reader).unwrap();
+    // let mut circ = Circuit::parse("circuit/zk_sat_all.pp.bristol").unwrap();
+    let data = [
+        encoded_all.as_slice(),
+        split_sighash.as_slice(),
+        // &split_transaction.txid().to_vec(),
+        aed_sighash.as_slice(),
+        timeout_sighash.as_slice(),
+    ].concat().to_hex();
+
+    // let encoded = encode_boolean(&data, true).unwrap();
+    // print!("{{");
+    // for i in 0..(encoded.len() - 2560){
+    //     if i % 64 == 0{
+    //         println!()
+    //     }
+    //     print!("{}, ", encoded[i]);
+    // }
+    // println!("}}");
+    // print!("{{");
+    // for i in 0..2560 {
+    //     if i % 64 == 0{
+    //         println!()
+    //     }
+    //     print!("{}, ", encoded[encoded.len() - 2560 + i]);
+    // }
+    // println!("}}");
+
+    let result = run_circuit(
+        &mut circ,
+        vec![],
+        encode_boolean(&data, true).unwrap(),
+    ).unwrap();
+    // dbg!(decode_boolean(&result, true).unwrap());
+    assert_eq!(&result, &[1u16]);
+}
+
 // #[test]
 // fn write_circuit_serialized() {
 //     let circuit_dir = std::fs::read_dir("./circuit").unwrap();

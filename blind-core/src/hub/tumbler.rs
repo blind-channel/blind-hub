@@ -47,6 +47,7 @@ impl PureEcdsaTumbler {
         let signature = self.sk_rsohc.sign(&statement, &commitment_token, &commitment_amount);
 
         signature.write_channel(channel_sender)?;
+        channel_sender.flush()?;
 
         println!("Tumbler :: register: {} ms", timer.elapsed().unwrap().as_millis());
         
@@ -117,6 +118,7 @@ impl PureEcdsaTumbler {
         statement.write_channel(channel_receiver)?;
         rsohc_statement_r1.write_channel(channel_receiver)?;
         rsohc_statement.write_channel(channel_receiver)?;
+        channel_receiver.flush()?;
 
         let rr = channel_receiver.read_pt()?;
         let rr_knwoledge_proof = DlKnowledgeProof::read_channel(channel_receiver)?;
@@ -143,6 +145,7 @@ impl PureEcdsaTumbler {
         channel_receiver.write_scalar(&commitment_rt_randomness)?;
         channel_receiver.write_pt(&rc)?;
         rc_dleq_proof.write_channel(channel_receiver)?;
+        channel_receiver.flush()?;
 
         println!("Tumbler :: promise : {} ms", timer.elapsed().unwrap().as_millis());
 
@@ -168,6 +171,7 @@ impl PureEcdsaTumbler {
             &commitment_rt_randomness.serialize()[..]
         ].concat());
         channel_sender.write_bytes(&commitment_rt)?;
+        channel_sender.flush()?;
 
         let rs = channel_sender.read_pt()?;
         let rs_knowledge_proof = DlKnowledgeProof::read_channel(channel_sender)?;
@@ -224,6 +228,7 @@ impl PureEcdsaTumbler {
         rc_dleq_proof.write_channel(channel_sender)?;
         rt_knowledge_proof.write_channel(channel_sender)?;
         c.write_channel(channel_sender)?;
+        channel_sender.flush()?;
 
         let sig_s_ks_invert = channel_sender.read_scalar()?;
         let sig_s = sig_s_ks_invert.mul(&y_secp256k1.invert().unwrap());
@@ -236,6 +241,7 @@ impl PureEcdsaTumbler {
         );
 
         channel_sender.write_scalar(&sig_s)?;
+        channel_sender.flush()?;
 
         println!("Tumbler :: solve   : {} ms", timer.elapsed().unwrap().as_millis());
 
@@ -281,6 +287,7 @@ impl ChannelTumbler {
         let signature = self.sk_rsohc.sign(&statement, &commitment_token, &commitment_amount);
 
         signature.write_channel(channel_sender)?;
+        channel_sender.flush()?;
 
         println!("Tumbler :: register: {} ms", timer.elapsed().unwrap().as_millis());
         
@@ -324,6 +331,7 @@ impl ChannelTumbler {
         statement.write_channel(channel_receiver)?;
         rsohc_statement_r1.write_channel(channel_receiver)?;
         rsohc_statement.write_channel(channel_receiver)?;
+        channel_receiver.flush()?;
 
         println!("Tumbler :: promise : {} ms", timer.elapsed().unwrap().as_millis());
 
@@ -381,6 +389,7 @@ impl ChannelTumbler {
     ) -> anyhow::Result<()> {
         let timer = SystemTime::now();
         channel_sender.write_scalar(&witness)?;
+        channel_sender.flush()?;
         println!("Tumbler :: solve2  : {} ms", timer.elapsed().unwrap().as_millis());
         Ok(())
     }
